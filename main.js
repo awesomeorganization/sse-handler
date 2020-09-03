@@ -11,11 +11,13 @@ export const sseHandler = () => {
 
   return {
     handle({ request, response }) {
-      response.writeHead(STATUS_OK, STATUS_CODES[STATUS_OK], {
-        'Cache-Control': 'no-store',
-        'Connection': 'keep-alive',
-        'Content-Type': 'text/event-stream',
-      })
+      response
+        .writeHead(STATUS_OK, STATUS_CODES[STATUS_OK], {
+          'Cache-Control': 'no-store',
+          'Connection': 'keep-alive',
+          'Content-Type': 'text/event-stream',
+        })
+        .write('\n') // This fires an event named open at the EventSource object
       const requestIndex = responses.push(response)
       request.once('close', () => {
         responses.splice(requestIndex, 1)
