@@ -1,11 +1,14 @@
 {
   "name": "@awesomeorganization/sse-handler",
   "description": "[ESM] The server-sent events (sse) handler for Node.js according to w3.org and whatwg",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "main": "main.js",
   "type": "module",
   "repository": "github:awesomeorganization/sse-handler",
   "license": "MIT",
+  "engines": {
+    "node": ">=14.0.0"
+  },
   "scripts": {
     "test": "node test.js"
   },
@@ -14,7 +17,20 @@
   },
   "devDependencies": {
     "@awesomeorganization/servers": "latest",
-    "eslint-config-prettier": "latest"
+    "eslint-config-prettier": "latest",
+    "eslint-plugin-node": "latest"
+  },
+  "peerDependencies": {
+    "eslint": "latest",
+    "prettier": "latest"
+  },
+  "peerDependenciesMeta": {
+    "eslint": {
+      "optional": true
+    },
+    "prettier": {
+      "optional": true
+    }
   },
   "keywords": [
     "event-source",
