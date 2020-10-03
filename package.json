@@ -1,7 +1,7 @@
 {
   "name": "@awesomeorganization/sse-handler",
-  "description": "[ESM] The server-sent events (sse) handler for Node.js according to w3.org and whatwg",
-  "version": "0.1.5",
+  "description": "[ESM] The server-sent events (sse) handler for Node.js according to w3c and whatwg",
+  "version": "0.1.6",
   "main": "main.js",
   "type": "module",
   "repository": "github:awesomeorganization/sse-handler",
@@ -35,7 +35,7 @@
     "event-stream",
     "server-sent-events",
     "sse",
-    "w3.org",
+    "w3c",
     "whatwg"
   ]
 }

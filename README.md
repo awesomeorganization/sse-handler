@@ -1,6 +1,6 @@
 # sse-handler
 
-:boom: [ESM] The server-sent events (sse) handler for Node.js according to w3.org and whatwg
+:boom: [ESM] The server-sent events (sse) handler for Node.js according to w3c and whatwg
 
 ---
 
