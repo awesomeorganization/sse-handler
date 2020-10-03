@@ -32,15 +32,24 @@ export const sseHandler = ({ queue = DEFAULT_QUEUE } = { query: DEFAULT_QUEUE })
         responses.splice(requestIndex, 1)
       })
     },
-    push({ data, event }) {
-      if (data.includes('\r') === true || data.includes('\n') === true) {
+    push({ data, event, stringify = false }) {
+      if (stringify === true || typeof data !== 'string') {
+        try {
+          data = JSON.stringify(data)
+        } catch (error) {
+          data = error
+        }
+        if (data instanceof Error) {
+          return data // I think it's a good idea to handle the error on the other side
+        }
+      } else if (data.includes('\r') === true || data.includes('\n') === true) {
         data = data.split(/\r\n|\r|\n/).join('\ndata:')
       }
       let chunk
-      if (event !== undefined) {
-        chunk = `event:${event}\ndata:${data}\n\n`
-      } else {
+      if (typeof event !== 'string') {
         chunk = `data:${data}\n\n`
+      } else {
+        chunk = `event:${event}\ndata:${data}\n\n`
       }
       if (queue > 0) {
         chunks.push(chunk)
@@ -51,6 +60,7 @@ export const sseHandler = ({ queue = DEFAULT_QUEUE } = { query: DEFAULT_QUEUE })
       for (const response of responses) {
         response.write(chunk)
       }
+      return null
     },
   }
 }
