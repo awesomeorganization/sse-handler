@@ -52,8 +52,7 @@ export const sseHandler = ({ queue = DEFAULT_QUEUE } = { query: DEFAULT_QUEUE })
         chunk = `event:${event}\ndata:${data}\n\n`
       }
       if (queue > 0) {
-        chunks.push(chunk)
-        if (chunks.length > queue) {
+        if (chunks.push(chunk) > queue) {
           chunks = chunks.slice(-queue)
         }
       }
