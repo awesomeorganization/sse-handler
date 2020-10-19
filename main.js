@@ -16,6 +16,9 @@ export const sseHandler = ({ queue = DEFAULT_QUEUE } = { query: DEFAULT_QUEUE })
         response.end()
       }
     },
+    flush() {
+      chunks = []
+    },
     handle({ request, response }) {
       response
         .writeHead(STATUS_OK, STATUS_CODES[STATUS_OK], {
