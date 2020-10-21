@@ -4,9 +4,6 @@
   "version": "0.0.0",
   "main": "example.js",
   "type": "module",
-  "engines": {
-    "node": ">=14.0.0"
-  },
   "scripts": {
     "start": "node example.js"
   },

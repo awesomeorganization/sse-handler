@@ -8,12 +8,12 @@ const STATUS_OK = 200
 const DEFAULT_QUEUE = 0
 
 export const sseHandler = ({ queue = DEFAULT_QUEUE } = { query: DEFAULT_QUEUE }) => {
-  const responses = []
+  const responses = {}
   let chunks = []
   return {
     end() {
-      for (const response of responses) {
-        response.end()
+      for (const key in responses) {
+        responses[key].end()
       }
     },
     flush() {
@@ -30,9 +30,10 @@ export const sseHandler = ({ queue = DEFAULT_QUEUE } = { query: DEFAULT_QUEUE })
       if (queue > 0) {
         response.write(chunks.join(''))
       }
-      const requestIndex = responses.push(response)
+      const key = Date.now().toString()
+      responses[key] = response
       request.once('close', () => {
-        responses.splice(requestIndex, 1)
+        delete responses[key]
       })
     },
     push({ data, event, stringify = false }) {
@@ -59,8 +60,8 @@ export const sseHandler = ({ queue = DEFAULT_QUEUE } = { query: DEFAULT_QUEUE })
           chunks = chunks.slice(-queue)
         }
       }
-      for (const response of responses) {
-        response.write(chunk)
+      for (const key in responses) {
+        responses[key].write(chunk)
       }
       return null
     },
