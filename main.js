@@ -5,19 +5,24 @@ import { STATUS_CODES } from 'http'
 // https://html.spec.whatwg.org/multipage/server-sent-events.html
 
 const STATUS_OK = 200
-const DEFAULT_QUEUE = 0
+const DEFAULT_EVENT = 'message'
 
-export const sseHandler = ({ queue = DEFAULT_QUEUE } = { query: DEFAULT_QUEUE }) => {
-  const responses = {}
-  let chunks = []
+export const sseHandler = ({ queueSizeByEvent = {} } = { queueSizeByEvent: {} }) => {
+  const responses = new Map()
+  const chunksByEvent = new Map()
+  for (const event in queueSizeByEvent) {
+    chunksByEvent.set(event, [])
+  }
   return {
     end() {
-      for (const key in responses) {
-        responses[key].end()
+      for (const [, response] of responses) {
+        response.end()
       }
     },
-    flush() {
-      chunks = []
+    flush({ event = DEFAULT_EVENT } = { event: DEFAULT_EVENT }) {
+      if (chunksByEvent.has(event) === true) {
+        chunksByEvent.set(event, [])
+      }
     },
     handle({ request, response }) {
       response
@@ -27,17 +32,19 @@ export const sseHandler = ({ queue = DEFAULT_QUEUE } = { query: DEFAULT_QUEUE })
           'Content-Type': 'text/event-stream',
         })
         .write('\n') // This fires an event named open at the EventSource object
-      if (queue > 0) {
-        response.write(chunks.join(''))
+      for (const [, chunks] of chunksByEvent) {
+        if (chunks.length > 0) {
+          response.write(chunks.join(''))
+        }
       }
       const key = Date.now().toString()
-      responses[key] = response
+      responses.set(key, response)
       request.once('close', () => {
-        delete responses[key]
+        responses.delete(key, response)
       })
     },
-    push({ data, event, stringify = false }) {
-      if (stringify === true || typeof data !== 'string') {
+    push({ data, event = DEFAULT_EVENT, stringify = false }) {
+      if (typeof data !== 'string' || stringify === true) {
         try {
           data = JSON.stringify(data)
         } catch (error) {
@@ -49,19 +56,16 @@ export const sseHandler = ({ queue = DEFAULT_QUEUE } = { query: DEFAULT_QUEUE })
       } else if (data.includes('\r') === true || data.includes('\n') === true) {
         data = data.split(/\r\n|\r|\n/).join('\ndata:')
       }
-      let chunk
-      if (typeof event !== 'string') {
-        chunk = `data:${data}\n\n`
-      } else {
-        chunk = `event:${event}\ndata:${data}\n\n`
-      }
-      if (queue > 0) {
-        if (chunks.push(chunk) > queue) {
-          chunks = chunks.slice(-queue)
+      const chunk = typeof event !== 'string' || event === DEFAULT_EVENT ? `data:${data}\n\n` : `event:${event}\ndata:${data}\n\n`
+      const queueSize = queueSizeByEvent[event]
+      if (typeof queueSize === 'number') {
+        const chunks = chunksByEvent.get(event)
+        if (queueSize < chunks.push(chunk)) {
+          chunksByEvent.set(event, chunks.slice(-queueSize))
         }
       }
-      for (const key in responses) {
-        responses[key].write(chunk)
+      for (const [, response] of responses) {
+        response.write(chunk)
       }
       return null
     },

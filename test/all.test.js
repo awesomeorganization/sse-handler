@@ -6,7 +6,11 @@ import undici from 'undici'
 const main = async () => {
   const host = '127.0.0.1'
   const port = 3000
-  const { handle, push, end } = sseHandler()
+  const { handle, push, end } = sseHandler({
+    queueSizeByEvent: {
+      event: 1,
+    },
+  })
   {
     const socket = await http({
       host,
@@ -75,17 +79,28 @@ const main = async () => {
           data: Buffer.from([1, 2, 3]),
         },
       ]
+      const done = async () => {
+        strictEqual(
+          push({
+            data: 9007199254740991n, // JSON.stringify do not know how to serialize a BigInt
+            stringify: true,
+          }) instanceof Error,
+          true
+        )
+        const chunksQueue = ['\n', `event:event\ndata:message\n\n`]
+        const { body } = await new undici.Client(`http://${host}:${port}`).request({
+          method: 'GET',
+          path: '/public/test',
+        })
+        body.on('data', (chunk) => {
+          strictEqual(chunk.toString('utf-8'), chunksQueue.shift())
+        })
+        end()
+      }
       const recursive = () => {
         strictEqual(push(pushQueue.shift()), null)
         if (pushQueue.length === 0) {
-          strictEqual(
-            push({
-              data: 9007199254740991n, // JSON.stringify do not know how to serialize a BigInt
-              stringify: true,
-            }) instanceof Error,
-            true
-          )
-          end()
+          done()
         } else {
           recursive()
         }
