@@ -10,7 +10,9 @@ export const sseHandler = ({ queueSizeByEvent = {} } = { queueSizeByEvent: {} })
   const clients = new Map()
   const chunksByEvent = new Map()
   for (const event in queueSizeByEvent) {
-    chunksByEvent.set(event, [])
+    if (queueSizeByEvent[event] > 0) {
+      chunksByEvent.set(event, [])
+    }
   }
   const end = () => {
     for (const [, client] of clients) {
@@ -35,16 +37,16 @@ export const sseHandler = ({ queueSizeByEvent = {} } = { queueSizeByEvent: {} })
         response.write(chunk)
       }
     }
-    const key = index
-    if (key === Number.MAX_VALUE) {
+    clients.set(index, response)
+    request.once('close', () => {
+      clients.delete(index, response)
+    })
+    if (index === Number.MAX_VALUE) {
       index = Number.MIN_VALUE
     } else {
       index += 1
     }
-    clients.set(key, response)
-    request.once('close', () => {
-      clients.delete(key, response)
-    })
+    return index
   }
   const push = ({ data, event = DEFAULT_EVENT, stringify = false }) => {
     if (stringify === true) {
@@ -61,16 +63,17 @@ export const sseHandler = ({ queueSizeByEvent = {} } = { queueSizeByEvent: {} })
     }
     const chunk = event === DEFAULT_EVENT ? `data:${data}\n\n` : `event:${event}\ndata:${data}\n\n`
     if (event in queueSizeByEvent === true) {
-      const chunks = chunksByEvent.get(event)
       const queueSize = queueSizeByEvent[event]
-      if (queueSize < chunks.push(chunk)) {
-        chunksByEvent.set(event, chunks.slice(-queueSize))
+      const chunks = chunksByEvent.get(event)
+      const size = chunks.push(chunk)
+      if (queueSize < size) {
+        chunksByEvent.set(event, chunks.slice(size - queueSize))
       }
     }
     for (const [, client] of clients) {
       client.write(chunk)
     }
-    return null
+    return chunk
   }
   return {
     chunksByEvent,

@@ -112,7 +112,7 @@ const main = async () => {
         end()
       }
       const recursive = () => {
-        strictEqual(push(pushQueue.shift()), null)
+        strictEqual(push(pushQueue.shift()) instanceof Error, false)
         if (pushQueue.length === 0) {
           done()
         } else {
