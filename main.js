@@ -6,6 +6,7 @@ const STATUS_OK = 200
 const DEFAULT_EVENT = 'message'
 
 export const sseHandler = ({ queueSizeByEvent = {} } = { queueSizeByEvent: {} }) => {
+  let index = Number.MIN_VALUE
   const clients = new Map()
   const chunksByEvent = new Map()
   for (const event in queueSizeByEvent) {
@@ -34,7 +35,12 @@ export const sseHandler = ({ queueSizeByEvent = {} } = { queueSizeByEvent: {} })
         response.write(chunk)
       }
     }
-    const key = clients.size
+    const key = index
+    if (key === Number.MAX_VALUE) {
+      index = Number.MIN_VALUE
+    } else {
+      index += 1
+    }
     clients.set(key, response)
     request.once('close', () => {
       clients.delete(key, response)
