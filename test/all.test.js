@@ -37,6 +37,8 @@ const main = async () => {
       `data:line #1\ndata:line #2\n\n`,
       `event:event\ndata:message\n\n`,
       `data:"message"\n\n`,
+      `data:"line #1\\nline #2"\n\n`,
+      `event:event\ndata:"message"\n\n`,
       'data:{"a":"string","b":1,"c":true,"d":null}\n\n',
       'data:[1,2,3]\n\n',
       'data:{"type":"Buffer","data":[1,2,3]}\n\n',
@@ -46,7 +48,7 @@ const main = async () => {
       path: '/public/test',
     })
     body.on('data', (chunk) => {
-      strictEqual(chunk.toString('utf-8'), chunksQueue.shift())
+      strictEqual(chunk.toString('utf8'), chunksQueue.shift())
     })
     body.once('data', () => {
       const pushQueue = [
@@ -65,18 +67,30 @@ const main = async () => {
           stringify: true,
         },
         {
+          data: 'line #1\nline #2',
+          stringify: true,
+        },
+        {
+          data: 'message',
+          event: 'event',
+          stringify: true,
+        },
+        {
           data: {
             a: 'string',
             b: 1,
             c: true,
             d: null,
           },
+          stringify: true,
         },
         {
           data: [1, 2, 3],
+          stringify: true,
         },
         {
           data: Buffer.from([1, 2, 3]),
+          stringify: true,
         },
       ]
       const done = async () => {
@@ -87,13 +101,13 @@ const main = async () => {
           }) instanceof Error,
           true
         )
-        const chunksQueue = ['\n', `event:event\ndata:message\n\n`]
+        const chunksQueue = ['\n', `event:event\ndata:"message"\n\n`]
         const { body } = await new undici.Client(`http://${host}:${port}`).request({
           method: 'GET',
           path: '/public/test',
         })
         body.on('data', (chunk) => {
-          strictEqual(chunk.toString('utf-8'), chunksQueue.shift())
+          strictEqual(chunk.toString('utf8'), chunksQueue.shift())
         })
         end()
       }
