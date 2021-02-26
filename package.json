@@ -1,8 +1,8 @@
 {
   "name": "@awesomeorganization/sse-handler",
   "description": "[ESM] The server-sent events (sse) handler for Node.js according to w3c and whatwg",
-  "version": "0.2.3",
-  "main": "main.js",
+  "version": "0.2.4",
+  "exports": "./main.js",
   "type": "module",
   "repository": "github:awesomeorganization/sse-handler",
   "license": "MIT",

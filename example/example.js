@@ -14,7 +14,10 @@ const main = async () => {
     replacement: '$1/index.html',
   })
   await http({
-    host: '127.0.0.1',
+    listenOptions: {
+      host: '127.0.0.1',
+      port: 3000,
+    },
     async onRequest(request, response) {
       switch (request.method) {
         case 'GET': {
@@ -31,10 +34,12 @@ const main = async () => {
                 request,
                 response,
               })
-              await staticMiddleware.handle({
-                request,
-                response,
-              })
+              if (response.writableEnded === false) {
+                await staticMiddleware.handle({
+                  request,
+                  response,
+                })
+              }
               return
             }
           }
@@ -42,7 +47,6 @@ const main = async () => {
       }
       response.end()
     },
-    port: 3000,
   })
   setInterval(() => {
     const timestamp = new Date().toISOString()
