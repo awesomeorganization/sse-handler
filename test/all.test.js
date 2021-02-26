@@ -59,9 +59,6 @@ const test = () => {
     'data:{"type":"Buffer","data":[1,2,3]}\n\n',
   ]
   const extraChunksQueue = ['\n', `event:event\ndata:"message"\n\n`]
-  const host = '127.0.0.1'
-  const port = 3000
-  const url = `http://${host}:${port}`
   const { end, handle, push } = sseHandler({
     queueSizeByEvent: {
       event: 1,
@@ -69,10 +66,12 @@ const test = () => {
   })
   http({
     listenOptions: {
-      host,
-      port,
+      host: '127.0.0.1',
+      port: 0,
     },
     async onListening() {
+      const { address, port } = this.address()
+      const url = `http://${address}:${port}`
       const { body } = await new undici.Client(url).request({
         method: 'GET',
         path: '/',

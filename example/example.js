@@ -3,22 +3,37 @@ import { rewriteHandler } from '@awesomeorganization/rewrite-handler'
 import { sseHandler } from '@awesomeorganization/sse-handler'
 import { staticHandler } from '@awesomeorganization/static-handler'
 
-const main = async () => {
+const example = async () => {
   const sseMidleware = sseHandler()
-  const rewriteMiddleware = rewriteHandler()
-  const staticMiddleware = staticHandler({
+  const rewriteMiddleware = rewriteHandler({
+    rules: [
+      {
+        pattern: '(.*)/$',
+        replacement: '$1/index.html',
+      },
+    ],
+  })
+  const staticMiddleware = await staticHandler({
     directoryPath: './static',
   })
-  rewriteMiddleware.push({
-    pattern: '(.*)/$',
-    replacement: '$1/index.html',
-  })
-  await http({
+  http({
     listenOptions: {
       host: '127.0.0.1',
       port: 3000,
     },
-    async onRequest(request, response) {
+    onListening() {
+      setInterval(() => {
+        const timestamp = new Date().toISOString()
+        sseMidleware.push({
+          data: `${timestamp}: Hi!`,
+        })
+        sseMidleware.push({
+          data: [timestamp, 'This is multiline', 'string with event.'].join('\n'),
+          event: 'someEvent',
+        })
+      }, 3e3)
+    },
+    onRequest(request, response) {
       switch (request.method) {
         case 'GET': {
           switch (request.url) {
@@ -35,7 +50,7 @@ const main = async () => {
                 response,
               })
               if (response.writableEnded === false) {
-                await staticMiddleware.handle({
+                staticMiddleware.handle({
                   request,
                   response,
                 })
@@ -48,16 +63,8 @@ const main = async () => {
       response.end()
     },
   })
-  setInterval(() => {
-    const timestamp = new Date().toISOString()
-    sseMidleware.push({
-      data: `${timestamp}: Hi!`,
-    })
-    sseMidleware.push({
-      data: [timestamp, 'This is multiline', 'string with event.'].join('\n'),
-      event: 'someEvent',
-    })
-  }, 3e3)
+  // TRY
+  // http://127.0.0.1:3000/
 }
 
-main()
+example()

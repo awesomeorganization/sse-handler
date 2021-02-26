@@ -31,7 +31,7 @@ export const sseHandler = ({ queueSizeByEvent = {} } = { queueSizeByEvent: {} })
         'Connection': 'keep-alive',
         'Content-Type': 'text/event-stream',
       })
-      .write('\n') // This fires an event named open at the EventSource object
+      .write('\n') // THIS FIRES AN EVENT NAMED OPEN AT THE EVENTSOURCE OBJECT
     for (const [, chunks] of chunksByEvent) {
       for (const chunk of chunks) {
         response.write(chunk)
@@ -56,7 +56,7 @@ export const sseHandler = ({ queueSizeByEvent = {} } = { queueSizeByEvent: {} })
         data = error
       }
       if (data instanceof Error) {
-        return data // I think it's a good idea to handle the error on the other side
+        return data // I THINK IT'S A GOOD IDEA TO HANDLE THE ERROR ON THE OTHER SIDE
       }
     } else if (data.includes('\r') === true || data.includes('\n') === true) {
       data = data.split(/\r\n|\r|\n/).join('\ndata:')
