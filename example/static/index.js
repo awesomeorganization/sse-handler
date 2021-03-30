@@ -1,4 +1,4 @@
-(function () {
+;(function () {
   'use strict'
 
   const [withoutEvent, withEvent] = document.querySelectorAll('textarea')

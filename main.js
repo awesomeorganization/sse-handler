@@ -4,9 +4,11 @@
 
 const STATUS_OK = 200
 const DEFAULT_EVENT = 'message'
+const EOLS = new RegExp('\\r\\n|\\r|\\n', 'g')
 
 export const sseHandler = ({ queueSizeByEvent = {} } = { queueSizeByEvent: {} }) => {
-  let index = Number.MIN_VALUE
+  let clientId = 0
+  let eventId = 0
   const clients = new Map()
   const chunksByEvent = new Map()
   for (const event in queueSizeByEvent) {
@@ -37,16 +39,16 @@ export const sseHandler = ({ queueSizeByEvent = {} } = { queueSizeByEvent: {} })
         response.write(chunk)
       }
     }
-    clients.set(index, response)
-    request.once('close', () => {
-      clients.delete(index, response)
-    })
-    if (index === Number.MAX_VALUE) {
-      index = Number.MIN_VALUE
+    if (clientId === Number.MAX_SAFE_INTEGER) {
+      clientId = 1
     } else {
-      index += 1
+      clientId++
     }
-    return index
+    clients.set(clientId, response)
+    request.once('close', () => {
+      clients.delete(clientId, response)
+    })
+    return clientId
   }
   const push = ({ data, event = DEFAULT_EVENT, stringify = false }) => {
     if (stringify === true) {
@@ -58,10 +60,15 @@ export const sseHandler = ({ queueSizeByEvent = {} } = { queueSizeByEvent: {} })
       if (data instanceof Error) {
         return data // I THINK IT'S A GOOD IDEA TO HANDLE THE ERROR ON THE OTHER SIDE
       }
-    } else if (data.includes('\r') === true || data.includes('\n') === true) {
-      data = data.split(/\r\n|\r|\n/).join('\ndata:')
+    } else if (EOLS.test(data) === true) {
+      data = data.split(EOLS).join('\ndata:')
     }
-    const chunk = event === DEFAULT_EVENT ? `data:${data}\n\n` : `event:${event}\ndata:${data}\n\n`
+    if (eventId === Number.MAX_SAFE_INTEGER) {
+      eventId = 1
+    } else {
+      eventId++
+    }
+    const chunk = event === DEFAULT_EVENT ? `data:${data}\nid:${eventId}\n\n` : `event:${event}\ndata:${data}\nid:${eventId}\n\n`
     if (event in queueSizeByEvent === true) {
       const queueSize = queueSizeByEvent[event]
       const chunks = chunksByEvent.get(event)
@@ -73,7 +80,7 @@ export const sseHandler = ({ queueSizeByEvent = {} } = { queueSizeByEvent: {} })
     for (const [, client] of clients) {
       client.write(chunk)
     }
-    return chunk
+    return eventId
   }
   return {
     chunksByEvent,
