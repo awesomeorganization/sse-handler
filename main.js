@@ -6,6 +6,43 @@ const STATUS_OK = 200
 const DEFAULT_EVENT = 'message'
 const EOLS = new RegExp('\\r\\n|\\r|\\n', 'g')
 
+export const message = ({ data, event, id, retry, stringify }) => {
+  const chunks = []
+  if (event !== undefined && event !== DEFAULT_EVENT) {
+    chunks.push(`event:${event}`)
+  }
+  if (data !== undefined) {
+    let chunk
+    if (stringify === true) {
+      try {
+        chunk = JSON.stringify(data)
+      } catch (error) {
+        chunk = error
+      }
+      if (chunk instanceof Error) {
+        return chunk // I THINK IT'S A GOOD IDEA TO HANDLE THE ERROR ON THE OTHER SIDE
+      }
+    } else if (EOLS.test(data) === true) {
+      chunk = data
+        .split(EOLS)
+        .map((iterator) => {
+          return iterator.trim()
+        })
+        .join('\ndata:')
+    } else {
+      chunk = data.trim()
+    }
+    chunks.push(`data:${chunk}`)
+  }
+  if (id !== undefined) {
+    chunks.push(`id:${id}`)
+  }
+  if (retry !== undefined) {
+    chunks.push(`retry:${retry}`)
+  }
+  return chunks.join('\n') + '\n\n'
+}
+
 export const sseHandler = ({ queueSizeByEvent = {} } = { queueSizeByEvent: {} }) => {
   let clientId = 0
   let eventId = 0
@@ -46,29 +83,30 @@ export const sseHandler = ({ queueSizeByEvent = {} } = { queueSizeByEvent: {} })
     }
     clients.set(clientId, response)
     request.once('close', () => {
-      clients.delete(clientId, response)
+      clients.delete(clientId)
     })
-    return clientId
+    return {
+      clientId,
+    }
   }
   const push = ({ data, event = DEFAULT_EVENT, stringify = false }) => {
-    if (stringify === true) {
-      try {
-        data = JSON.stringify(data)
-      } catch (error) {
-        data = error
-      }
-      if (data instanceof Error) {
-        return data // I THINK IT'S A GOOD IDEA TO HANDLE THE ERROR ON THE OTHER SIDE
-      }
-    } else if (EOLS.test(data) === true) {
-      data = data.split(EOLS).join('\ndata:')
-    }
     if (eventId === Number.MAX_SAFE_INTEGER) {
       eventId = 1
     } else {
       eventId++
     }
-    const chunk = event === DEFAULT_EVENT ? `data:${data}\nid:${eventId}\n\n` : `event:${event}\ndata:${data}\nid:${eventId}\n\n`
+    const chunk = message({
+      data,
+      event,
+      id: eventId,
+      stringify,
+    })
+    if (chunk instanceof Error) {
+      return {
+        error: chunk,
+        eventId,
+      }
+    }
     if (event in queueSizeByEvent === true) {
       const queueSize = queueSizeByEvent[event]
       const chunks = chunksByEvent.get(event)
@@ -80,7 +118,9 @@ export const sseHandler = ({ queueSizeByEvent = {} } = { queueSizeByEvent: {} })
     for (const [, client] of clients) {
       client.write(chunk)
     }
-    return eventId
+    return {
+      eventId,
+    }
   }
   return {
     chunksByEvent,

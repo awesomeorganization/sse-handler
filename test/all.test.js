@@ -1,5 +1,5 @@
+import { message, sseHandler } from '../main.js'
 import { http } from '@awesomeorganization/servers'
-import { sseHandler } from '../main.js'
 import { strictEqual } from 'assert'
 import undici from 'undici'
 
@@ -48,17 +48,20 @@ const test = () => {
   ]
   const chunksQueue = [
     '\n',
-    `data:message\nid:1\n\n`,
-    `data:line #1\ndata:line #2\nid:2\n\n`,
-    `event:event\ndata:message\nid:3\n\n`,
-    `data:"message"\nid:4\n\n`,
-    `data:"line #1\\nline #2"\nid:5\n\n`,
-    `event:event\ndata:"message"\nid:6\n\n`,
-    'data:{"a":"string","b":1,"c":true,"d":null}\nid:7\n\n',
-    'data:[1,2,3]\nid:8\n\n',
-    'data:{"type":"Buffer","data":[1,2,3]}\nid:9\n\n',
+    ...pushQueue.map((iterator, index) => {
+      return message({
+        ...iterator,
+        id: index + 1,
+      })
+    }),
   ]
-  const extraChunksQueue = ['\n', `event:event\ndata:"message"\nid:6\n\n`]
+  const extraChunksQueue = [
+    '\n',
+    message({
+      ...pushQueue[5],
+      id: 6,
+    }),
+  ]
   const { end, handle, push } = sseHandler({
     queueSizeByEvent: {
       event: 1,
@@ -72,7 +75,8 @@ const test = () => {
     async onListening() {
       const { address, port } = this.address()
       const url = `http://${address}:${port}`
-      const { body: bodyA } = await new undici.Client(url).request({
+      const clientA = new undici.Client(url)
+      const { body: bodyA } = await clientA.request({
         method: 'GET',
         path: '/',
       })
@@ -80,15 +84,18 @@ const test = () => {
       bodyA.on('data', async (chunkA) => {
         strictEqual(chunkA, chunksQueue.shift())
         if (chunksQueue.length === 0) {
-          const { body: bodyB } = await new undici.Client(url).request({
+          const clientB = new undici.Client(url)
+          const { body: bodyB } = await clientB.request({
             method: 'GET',
             path: '/',
           })
           bodyB.setEncoding('utf8')
-          bodyB.on('data', (chunkB) => {
+          bodyB.on('data', async (chunkB) => {
             strictEqual(chunkB, extraChunksQueue.shift())
             if (extraChunksQueue.length === 0) {
               end()
+              await clientA.close()
+              await clientB.close()
               this.close()
             }
           })
@@ -96,7 +103,7 @@ const test = () => {
       })
       bodyA.once('data', () => {
         while (pushQueue.length !== 0) {
-          strictEqual(push(pushQueue.shift()) instanceof Error, false)
+          push(pushQueue.shift())
         }
       })
     },
