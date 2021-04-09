@@ -1,4 +1,7 @@
+/* eslint-disable node/no-unsupported-features/es-syntax */
+
 import { message, sseHandler } from '../main.js'
+
 import { http } from '@awesomeorganization/servers'
 import { strictEqual } from 'assert'
 import undici from 'undici'
@@ -47,7 +50,7 @@ const test = () => {
     },
   ]
   const chunksQueue = [
-    '\n',
+    '\n\n',
     ...pushQueue.map((iterator, index) => {
       return message({
         ...iterator,
@@ -56,7 +59,6 @@ const test = () => {
     }),
   ]
   const extraChunksQueue = [
-    '\n',
     message({
       ...pushQueue[5],
       id: 6,
@@ -100,24 +102,16 @@ const test = () => {
             }
           })
         }
-      })
-      bodyA.once('data', () => {
-        while (pushQueue.length !== 0) {
+        if (pushQueue.length !== 0) {
           push(pushQueue.shift())
         }
       })
     },
     onRequest(request, response) {
-      switch (request.method) {
-        case 'GET': {
-          handle({
-            request,
-            response,
-          })
-          return
-        }
-      }
-      response.end()
+      handle({
+        request,
+        response,
+      })
     },
   })
 }

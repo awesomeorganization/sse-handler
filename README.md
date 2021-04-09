@@ -24,7 +24,6 @@ import { sseHandler } from '@awesomeorganization/sse-handler'
 import { staticHandler } from '@awesomeorganization/static-handler'
 
 const example = async () => {
-  const sseMidleware = sseHandler()
   const rewriteMiddleware = rewriteHandler({
     rules: [
       {
@@ -33,6 +32,7 @@ const example = async () => {
       },
     ],
   })
+  const sseMidleware = sseHandler()
   const staticMiddleware = await staticHandler({
     directoryPath: './static',
   })
@@ -69,12 +69,13 @@ const example = async () => {
                 request,
                 response,
               })
-              if (response.writableEnded === false) {
-                staticMiddleware.handle({
-                  request,
-                  response,
-                })
+              if (response.writableEnded === true) {
+                return
               }
+              staticMiddleware.handle({
+                request,
+                response,
+              })
               return
             }
           }

@@ -1,3 +1,5 @@
+/* eslint-disable node/no-unsupported-features/es-syntax */
+
 // REFERENCES
 // https://www.w3.org/TR/eventsource/
 // https://html.spec.whatwg.org/multipage/server-sent-events.html
@@ -22,15 +24,19 @@ export const message = ({ data, event, id, retry, stringify }) => {
       if (chunk instanceof Error) {
         return chunk // I THINK IT'S A GOOD IDEA TO HANDLE THE ERROR ON THE OTHER SIDE
       }
-    } else if (EOLS.test(data) === true) {
-      chunk = data
-        .split(EOLS)
-        .map((iterator) => {
-          return iterator.trim()
-        })
-        .join('\ndata:')
+    } else if (typeof data === 'string') {
+      if (EOLS.test(data) === true) {
+        chunk = data
+          .split(EOLS)
+          .map((iterator) => {
+            return iterator.trim()
+          })
+          .join('\ndata:')
+      } else {
+        chunk = data.trim()
+      }
     } else {
-      chunk = data.trim()
+      return Error('Use stringify option to send an object')
     }
     chunks.push(`data:${chunk}`)
   }
@@ -54,7 +60,7 @@ export const sseHandler = ({ queueSizeByEvent = {} } = { queueSizeByEvent: {} })
     }
   }
   const end = () => {
-    for (const [, client] of clients) {
+    for (const client of clients.values()) {
       client.end()
     }
   }
@@ -64,18 +70,23 @@ export const sseHandler = ({ queueSizeByEvent = {} } = { queueSizeByEvent: {} })
     }
   }
   const handle = ({ request, response }) => {
+    if (request.aborted === true) {
+      return undefined
+    }
+    let buffer = ''
+    for (const chunks of chunksByEvent.values()) {
+      buffer += chunks.join('')
+    }
+    if (buffer.length === 0) {
+      buffer = '\n\n' // THIS FIRES AN OPEN EVENT AT THE EVENTSOURCE
+    }
     response
       .writeHead(STATUS_OK, {
         'Cache-Control': 'no-store',
         'Connection': 'keep-alive',
         'Content-Type': 'text/event-stream',
       })
-      .write('\n') // THIS FIRES AN EVENT NAMED OPEN AT THE EVENTSOURCE OBJECT
-    for (const [, chunks] of chunksByEvent) {
-      for (const chunk of chunks) {
-        response.write(chunk)
-      }
-    }
+      .write(buffer)
     if (clientId === Number.MAX_SAFE_INTEGER) {
       clientId = 1
     } else {
@@ -115,7 +126,10 @@ export const sseHandler = ({ queueSizeByEvent = {} } = { queueSizeByEvent: {} })
         chunksByEvent.set(event, chunks.slice(size - queueSize))
       }
     }
-    for (const [, client] of clients) {
+    for (const client of clients.values()) {
+      if (client.writableEnded === true) {
+        continue
+      }
       client.write(chunk)
     }
     return {
