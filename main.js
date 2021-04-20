@@ -70,7 +70,7 @@ export const sseHandler = ({ queueSizeByEvent = {} } = { queueSizeByEvent: {} })
     }
   }
   const handle = ({ request, response }) => {
-    if (request.aborted === true) {
+    if (request.aborted === true || response.writableEnded === true) {
       return undefined
     }
     let buffer = ''
@@ -123,7 +123,7 @@ export const sseHandler = ({ queueSizeByEvent = {} } = { queueSizeByEvent: {} })
       const chunks = chunksByEvent.get(event)
       const size = chunks.push(chunk)
       if (queueSize < size) {
-        chunksByEvent.set(event, chunks.slice(size - queueSize))
+        chunks.splice(0, size - queueSize)
       }
     }
     for (const client of clients.values()) {
