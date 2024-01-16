@@ -7,6 +7,6 @@
     "@awesomeorganization/rewrite-handler": "1.0.2",
     "@awesomeorganization/servers": "1.0.1",
     "@awesomeorganization/sse-handler": "..",
-    "@awesomeorganization/static-handler": "1.0.2"
+    "@awesomeorganization/static-handler": "1.4.3"
   }
 }
